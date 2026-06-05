@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Live Room Sentiment</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090f;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:16px;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:14px}
+.toplabel{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,0.3)}
+.statuspill{display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,0.4)}
+.sdot{width:8px;height:8px;border-radius:50%;background:#2a2a2a;transition:background .4s}
+.sdot.on{background:#4ade80;animation:blink 2s infinite}
+.sdot.thinking{background:#fbbf24;animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.card{background:#111118;border-radius:13px;border:1px solid rgba(255,255,255,0.07);padding:16px 18px;margin-bottom:12px}
+.clabel{font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,0.28);margin-bottom:12px}
+.epanel{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:24px 16px}
+#eglow{position:absolute;inset:0;opacity:0;border-radius:13px;transition:background 1.8s,opacity 1s;pointer-events:none}
+#ename{font-size:72px;font-weight:700;letter-spacing:-3px;line-height:1;color:#2a2a2a;transition:color 1.2s;position:relative;text-align:center}
+#escore{font-size:13px;color:rgba(255,255,255,0.28);margin-top:8px;position:relative}
+.bars{width:100%;margin-top:20px;display:flex;flex-direction:column;gap:9px;position:relative}
+.brow{display:flex;align-items:center;gap:9px}
+.bname{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,0.32);width:72px;text-align:right}
+.btrack{flex:1;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+.bfill{height:100%;border-radius:3px;width:0%;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
+.bval{font-size:10px;color:rgba(255,255,255,0.28);width:30px}
+.kcloud{display:flex;flex-wrap:wrap;gap:6px;min-height:40px}
+.kword{font-size:13px;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6)}
+.tbox{font-size:13px;color:rgba(255,255,255,0.4);line-height:1.65;max-height:100px;overflow:hidden;word-break:break-word}
+#tlcanvas{width:100%;height:60px;display:block}
+.ctrls{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)}
+.ctrls-row{display:flex;gap:8px;align-items:center}
+.kbtn{padding:10px 20px;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;border:1px solid;transition:all .18s;-webkit-appearance:none}
+.kstart{background:rgba(99,102,241,.16);border-color:rgba(99,102,241,.42);color:#a5b4fc}
+.kstop{background:rgba(239,68,68,.11);border-color:rgba(239,68,68,.33);color:#fca5a5;display:none}
+.kinput{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);font-size:13px;padding:10px 12px;border-radius:10px;flex:1;outline:none;-webkit-appearance:none}
+.kinput::placeholder{color:rgba(255,255,255,.22)}
+.errmsg{font-size:12px;color:#f87171;display:none;padding:4px 2px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="toplabel">Live Room Sentiment</span>
+  <div class="statuspill"><span class="sdot" id="sd"></span><span id="st">Ready</span></div>
+</div>
+
+<div class="card epanel">
+  <div id="eglow"></div>
+  <div id="ename">—</div>
+  <div id="escore"></div>
+  <div class="bars">
+    <div class="brow"><span class="bname">Positive</span><div class="btrack"><div class="bfill" id="b-pos" style="background:#4ade80"></div></div><span class="bval" id="v-pos">0%</span></div>
+    <div class="brow"><span class="bname">Neutral</span><div class="btrack"><div class="bfill" id="b-neu" style="background:#94a3b8"></div></div><span class="bval" id="v-neu">0%</span></div>
+    <div class="brow"><span class="bname">Negative</span><div class="btrack"><div class="bfill" id="b-neg" style="background:#f87171"></div></div><span class="bval" id="v-neg">0%</span></div>
+    <div class="brow"><span class="bname">Sadness</span><div class="btrack"><div class="bfill" id="b-sad" style="background:#818cf8"></div></div><span class="bval" id="v-sad">0%</span></div>
+    <div class="brow"><span class="bname">Happiness</span><div class="btrack"><div class="bfill" id="b-hap" style="background:#fbbf24"></div></div><span class="bval" id="v-hap">0%</span></div>
+    <div class="brow"><span class="bname">Anxiety</span><div class="btrack"><div class="bfill" id="b-anx" style="background:#fb923c"></div></div><span class="bval" id="v-anx">0%</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="clabel">Key words</div>
+  <div class="kcloud" id="kc"><span style="font-size:12px;color:rgba(255,255,255,.18);font-style:italic">Waiting…</span></div>
+</div>
+
+<div class="card">
+  <div class="clabel">Latest speech</div>
+  <div class="tbox" id="tb">Listening…</div>
+</div>
+
+<div class="card" style="padding:14px 18px">
+  <div class="clabel">Sentiment arc</div>
+  <canvas id="tlcanvas"></canvas>
+</div>
+
+<div class="ctrls">
+  <div class="ctrls-row">
+    <input class="kinput" id="dkInput" type="password" placeholder="Deepgram API key" autocomplete="off" autocorrect="off" autocapitalize="off"/>
+  </div>
+  <div class="ctrls-row">
+    <input class="kinput" id="akInput" type="password" placeholder="Anthropic API key (sk-ant-...)" autocomplete="off" autocorrect="off" autocapitalize="off"/>
+  </div>
+  <div class="ctrls-row">
+    <button class="kbtn kstart" id="startBtn" onclick="go()">&#9654; Start</button>
+    <button class="kbtn kstop"  id="stopBtn"  onclick="halt()">&#9632; Stop</button>
+  </div>
+  <div class="errmsg" id="errmsg"></div>
+</div>
+
+<script>
+const EMETA={
+  positive:  {color:'#4ade80',bar:'b-pos',val:'v-pos'},
+  neutral:   {color:'#94a3b8',bar:'b-neu',val:'v-neu'},
+  negative:  {color:'#f87171',bar:'b-neg',val:'v-neg'},
+  sadness:   {color:'#818cf8',bar:'b-sad',val:'v-sad'},
+  happiness: {color:'#fbbf24',bar:'b-hap',val:'v-hap'},
+  anxiety:   {color:'#fb923c',bar:'b-anx',val:'v-anx'},
+  discomfort:{color:'#fb923c',bar:'b-anx',val:'v-anx'},
+};
+const YPOS={positive:.08,happiness:.2,neutral:.5,sadness:.72,anxiety:.85,discomfort:.85,negative:.93};
+
+let socket,recorder,stream,history=[],keywords=[],isOn=false,pending='',analyzeTimer=null,analyzing=false;
+const cv=document.getElementById('tlcanvas');
+const cx=cv.getContext('2d');
+
+function ss(t,mode){
+  document.getElementById('st').textContent=t;
+  document.getElementById('sd').className='sdot'+(mode==='live'?' on':mode==='thinking'?' thinking':'');
+}
+function err(msg){const el=document.getElementById('errmsg');el.textContent=msg;el.style.display=msg?'block':'none'}
+
+function resize(){
+  const W=cv.parentElement.offsetWidth-36;
+  cv.width=W*devicePixelRatio;cv.height=60*devicePixelRatio;
+  cv.style.width=W+'px';cv.style.height='60px';
+  cx.scale(devicePixelRatio,devicePixelRatio);draw();
+}
+
+function draw(){
+  const W=parseInt(cv.style.width)||300,H=60;
+  cx.clearRect(0,0,W,H);
+  cx.strokeStyle='rgba(255,255,255,.05)';cx.lineWidth=.5;
+  [.25,.5,.75].forEach(f=>{cx.beginPath();cx.moveTo(0,f*H);cx.lineTo(W,f*H);cx.stroke()});
+  if(history.length<2)return;
+  const pts=history.map((s,i)=>({x:(i/(history.length-1))*W,y:(YPOS[s.dom]??.5)*H,c:EMETA[s.dom]?.color||'#94a3b8'}));
+  cx.beginPath();cx.strokeStyle='rgba(255,255,255,.18)';cx.lineWidth=2;
+  pts.forEach((p,i)=>i===0?cx.moveTo(p.x,p.y):cx.lineTo(p.x,p.y));cx.stroke();
+  pts.forEach(p=>{cx.beginPath();cx.arc(p.x,p.y,4,0,Math.PI*2);cx.fillStyle=p.c;cx.fill()});
+}
+
+function updateDisplay(scores,dominant,kwords){
+  const dom=dominant||'neutral';
+  const meta=EMETA[dom]||EMETA.neutral;
+  document.getElementById('ename').textContent=dom.charAt(0).toUpperCase()+dom.slice(1);
+  document.getElementById('ename').style.color=meta.color;
+  document.getElementById('escore').textContent=scores[dom]?Math.round(scores[dom])+'%':'';
+  document.getElementById('eglow').style.background=meta.color;
+  document.getElementById('eglow').style.opacity='0.05';
+  for(const[k,m]of Object.entries(EMETA)){
+    const bf=document.getElementById(m.bar),bv=document.getElementById(m.val);
+    if(!bf||!bv)continue;
+    const p=Math.min(100,Math.round(scores[k]||0));
+    bf.style.width=p+'%';bv.textContent=p+'%';
+  }
+  if(kwords&&kwords.length){
+    keywords=[...new Set([...kwords,...keywords])].slice(0,18);
+    const kc=document.getElementById('kc');kc.innerHTML='';
+    keywords.forEach((w,i)=>{
+      const sp=document.createElement('span');sp.className='kword';sp.textContent=w;
+      if(i<4)sp.style.borderColor=meta.color+'55';
+      kc.appendChild(sp);
+    });
+  }
+  history.push({dom});if(history.length>80)history.shift();draw();
+}
+
+async function analyze(text){
+  if(analyzing)return;
+  const ak=document.getElementById('akInput').value.trim();
+  if(!ak){err('Enter your Anthropic API key');return}
+  analyzing=true;
+  if(isOn)ss('Analyzing…','thinking');
+  err('');
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':ak,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-allow-browser':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:256,
+        system:`Analyze sentiment from spoken classroom discussion. Return ONLY a JSON object, no markdown, no explanation. Keys:
+- "dominant": one of: positive, negative, neutral, sadness, happiness, anxiety, discomfort
+- "scores": {positive, negative, neutral, sadness, happiness, anxiety} each 0-100
+- "keywords": array of 4-6 emotionally significant words/phrases
+Be sensitive to subtle emotional cues in natural conversation.`,
+        messages:[{role:'user',content:`Transcript: "${text.slice(0,500)}"`}]
+      })
+    });
+    if(!resp.ok){
+      const e=await resp.json().catch(()=>({}));
+      err('API error: '+(e?.error?.message||resp.status));return;
+    }
+    const data=await resp.json();
+    const raw=data.content?.[0]?.text||'';
+    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(parsed?.dominant&&parsed?.scores)updateDisplay(parsed.scores,parsed.dominant,parsed.keywords);
+  }catch(e){
+    err('Error: '+e.message);
+  }finally{
+    analyzing=false;
+    if(isOn)ss('Live','live');
+  }
+}
+
+function onTranscript(txt){
+  document.getElementById('tb').textContent=(document.getElementById('tb').textContent+' '+txt).slice(-400).trim();
+  pending+=' '+txt;
+  clearTimeout(analyzeTimer);
+  analyzeTimer=setTimeout(()=>{
+    if(pending.trim().split(/\s+/).length>=6){analyze(pending.trim());pending='';}
+  },2800);
+}
+
+async function go(){
+  const dk=document.getElementById('dkInput').value.trim();
+  const ak=document.getElementById('akInput').value.trim();
+  if(!dk){err('Enter your Deepgram API key');return}
+  if(!ak){err('Enter your Anthropic API key');return}
+  err('');ss('Requesting mic…','');
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false})}
+  catch(e){ss('Mic denied','');err('Microphone access denied. Check Safari Settings → this site → Microphone.');return}
+
+  const ws='wss://api.deepgram.com/v1/listen?model=nova-2&language=en&punctuate=true&smart_format=true&interim_results=false';
+  socket=new WebSocket(ws,['token',dk]);
+  socket.onopen=()=>{
+    ss('Live','live');isOn=true;
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='';
+    recorder=new MediaRecorder(stream);
+    recorder.ondataavailable=e=>{if(e.data.size>0&&socket.readyState===1)socket.send(e.data)};
+    recorder.start(500);
+  };
+  socket.onmessage=e=>{
+    try{
+      const msg=JSON.parse(e.data);
+      if(!msg.is_final)return;
+      const txt=msg?.channel?.alternatives?.[0]?.transcript||'';
+      if(txt.trim())onTranscript(txt);
+    }catch(_){}
+  };
+  socket.onerror=e=>{err('Deepgram connection failed. Check your API key.');ss('Error','')};
+  socket.onclose=()=>{if(isOn)ss('Disconnected','')};
+}
+
+function halt(){
+  isOn=false;
+  if(recorder&&recorder.state!=='inactive')recorder.stop();
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  if(socket)socket.close();
+  ss('Stopped','');
+  document.getElementById('startBtn').style.display='';
+  document.getElementById('stopBtn').style.display='none';
+}
+
+window.addEventListener('resize',resize);
+setTimeout(resize,300);
+</script>
+</body>
+</html>
